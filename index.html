@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Decrypt</title>
+  <style>
+    body {
+      background: #111;
+      color: #fff;
+      font-family: sans-serif;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    input, button {
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      margin: 10px 0;
+      font-size: 16px;
+      padding: 8px;
+      border-radius: 5px;
+    }
+    input {
+      background: #222;
+      color: #fff;
+      border: 1px solid #444;
+    }
+    button {
+      background: #444;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #555;
+    }
+    #result {
+      margin-top: 20px;
+      white-space: pre-wrap;
+      background: #222;
+      padding: 15px;
+      border-radius: 5px;
+      border: 1px solid #444;
+    }
+  </style>
+</head>
+<body>
+  <h3>输入密钥解密</h3>
+  <input type="password" id="p" placeholder="请输入密钥" onkeydown="if(event.key==='Enter'){event.preventDefault();document.querySelector('button').click();}">
+  <button onclick="(async()=>{
+    const u = new URLSearchParams(location.search);
+    const parts = u.get('d')?.split('.') || [];
+    if (parts.length !== 3) {
+      document.getElementById('result').innerText = '链接格式无效。';
+      return;
+    }
+    const f = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/').padEnd(s.length + (4 - s.length % 4) % 4, '=')), c => c.charCodeAt(0));
+    const [a, b, c] = parts;
+    try {
+      const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(p.value), {name:'PBKDF2'}, false, ['deriveKey']);
+      const dKey = await crypto.subtle.deriveKey({name:'PBKDF2', salt: f(a), iterations: 1e5, hash: 'SHA-256'}, k, {name:'AES-CBC', length: 256}, false, ['decrypt']);
+      const r = await crypto.subtle.decrypt({name:'AES-CBC', iv: f(b)}, dKey, f(c));
+      const resultText = new TextDecoder().decode(r);
+      document.getElementById('result').innerHTML = `<div><strong>明文：</strong></div><div>${resultText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
+    } catch (e) {
+      document.getElementById('result').innerText = '解密失败，密钥错误或数据损坏。';
+    }
+  })()">解密</button>
+
+  <div id="result"></div>
+</body>
+</html>
