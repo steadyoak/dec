@@ -35,14 +35,6 @@
     button:hover {
       background: #555;
     }
-    #result {
-      margin-top: 20px;
-      white-space: pre-wrap;
-      background: #222;
-      padding: 15px;
-      border-radius: 5px;
-      border: 1px solid #444;
-    }
   </style>
 </head>
 <body>
@@ -52,7 +44,7 @@
     const u = new URLSearchParams(location.search);
     const parts = u.get('d')?.split('.') || [];
     if (parts.length !== 3) {
-      document.getElementById('result').innerText = '链接格式无效。';
+      document.body.innerHTML = '<div style=\'color:#fff;background:#111;font-family:sans-serif;padding:20px;\'>链接格式无效。</div>';
       return;
     }
     const f = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/').padEnd(s.length + (4 - s.length % 4) % 4, '=')), c => c.charCodeAt(0));
@@ -61,13 +53,38 @@
       const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(p.value), {name:'PBKDF2'}, false, ['deriveKey']);
       const dKey = await crypto.subtle.deriveKey({name:'PBKDF2', salt: f(a), iterations: 1e5, hash: 'SHA-256'}, k, {name:'AES-CBC', length: 256}, false, ['decrypt']);
       const r = await crypto.subtle.decrypt({name:'AES-CBC', iv: f(b)}, dKey, f(c));
-      const resultText = new TextDecoder().decode(r);
-      document.getElementById('result').innerHTML = `<div><strong>明文：</strong></div><div>${resultText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
+      const resultText = new TextDecoder().decode(r).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      document.head.innerHTML = `
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>明文查看</title>
+        <style>
+          body {
+            background: #111;
+            color: #fff;
+            font-family: sans-serif;
+            padding: 20px;
+            box-sizing: border-box;
+          }
+          .content {
+            white-space: pre-wrap;
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+          }
+        </style>
+      `;
+
+      document.body.innerHTML = `
+        <div><strong>明文：</strong></div>
+        <div class="content">${resultText}</div>
+      `;
     } catch (e) {
-      document.getElementById('result').innerText = '解密失败，密钥错误或数据损坏。';
+      document.body.innerHTML = '<div style=\'color:#fff;background:#111;font-family:sans-serif;padding:20px;\'>解密失败，密钥错误或数据损坏。</div>';
     }
   })()">解密</button>
-
-  <div id="result"></div>
 </body>
 </html>
