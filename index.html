@@ -89,7 +89,7 @@
             background: #222;
             border: 1px solid #444;
             border-radius: 5px;
-            padding: 15px;
+            padding: 5px;
             margin-top: 20px;
           }
         `;
@@ -98,13 +98,13 @@
         document.head.appendChild(title);
         document.head.appendChild(style);
 
-        const heading = document.createElement('div');
-        heading.textContent = '明文：';
+        // const heading = document.createElement('div');
+        // heading.textContent = '明文：';
         const content = document.createElement('div');
         content.className = 'content';
         content.textContent = resultText;
 
-        document.body.appendChild(heading);
+        // document.body.appendChild(heading);
         document.body.appendChild(content);
       } catch (e) {
         showError('解密失败，密钥错误或数据损坏。');
