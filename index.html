@@ -14,7 +14,6 @@
     }
     input, button {
       width: 100%;
-      max-width: 100%;
       box-sizing: border-box;
       margin: 10px 0;
       font-size: 16px;
@@ -40,64 +39,88 @@
 <body>
   <h3>输入密钥解密</h3>
   <input type="password" id="p" placeholder="请输入密钥" onkeydown="if(event.key==='Enter'){event.preventDefault();document.querySelector('button').click();}">
-  <button onclick="(async()=>{
-    const u = new URLSearchParams(location.search);
-    const parts = u.get('d')?.split('.') || [];
-    if (parts.length !== 3) {
-      document.body.innerHTML = '<div style=\"color:#fff;background:#111;font-family:sans-serif;padding:20px;\">链接格式无效。</div>';
-      return;
-    }
-    const f = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/').padEnd(s.length + (4 - s.length % 4) % 4, '=')), c => c.charCodeAt(0));
-    const [a, b, c] = parts;
-    try {
-      const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(p.value), {name:'PBKDF2'}, false, ['deriveKey']);
-      const dKey = await crypto.subtle.deriveKey({name:'PBKDF2', salt: f(a), iterations: 1e5, hash: 'SHA-256'}, k, {name:'AES-CBC', length: 256}, false, ['decrypt']);
-      const r = await crypto.subtle.decrypt({name:'AES-CBC', iv: f(b)}, dKey, f(c));
-      const resultText = new TextDecoder().decode(r).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  <button onclick="decrypt()">解密</button>
 
-      // 清空页面
-      document.head.innerHTML = '';
+  <script>
+    async function decrypt() {
+      const u = new URLSearchParams(location.search);
+      const parts = u.get('d')?.split('.') || [];
+      if (parts.length !== 3) {
+        showError('链接格式无效。');
+        return;
+      }
+
+      const f = s =>
+        Uint8Array.from(
+          atob(s.replace(/-/g, '+').replace(/_/g, '/').padEnd(s.length + (4 - s.length % 4) % 4, '=')),
+          c => c.charCodeAt(0)
+        );
+
+      const [a, b, c] = parts;
+      const pass = document.getElementById('p').value;
+
+      try {
+        const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), { name: 'PBKDF2' }, false, ['deriveKey']);
+        const key = await crypto.subtle.deriveKey(
+          { name: 'PBKDF2', salt: f(a), iterations: 1e5, hash: 'SHA-256' },
+          keyMaterial,
+          { name: 'AES-CBC', length: 256 },
+          false,
+          ['decrypt']
+        );
+        const decrypted = await crypto.subtle.decrypt({ name: 'AES-CBC', iv: f(b) }, key, f(c));
+        const resultText = new TextDecoder().decode(decrypted);
+
+        // 构造新页面
+        document.head.innerHTML = '';
+        document.body.innerHTML = '';
+
+        const style = document.createElement('style');
+        style.textContent = `
+          body {
+            background: #111;
+            color: #fff;
+            font-family: sans-serif;
+            padding: 20px;
+            box-sizing: border-box;
+          }
+          .content {
+            white-space: pre-wrap;
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+          }
+        `;
+        const title = document.createElement('title');
+        title.textContent = '明文查看';
+        document.head.appendChild(title);
+        document.head.appendChild(style);
+
+        const heading = document.createElement('div');
+        heading.textContent = '明文：';
+        const content = document.createElement('div');
+        content.className = 'content';
+        content.textContent = resultText;
+
+        document.body.appendChild(heading);
+        document.body.appendChild(content);
+      } catch (e) {
+        showError('解密失败，密钥错误或数据损坏。');
+      }
+    }
+
+    function showError(msg) {
       document.body.innerHTML = '';
-
-      // 新建样式标签
-      const style = document.createElement('style');
-      style.textContent = `
-        body {
-          background: #111;
-          color: #fff;
-          font-family: sans-serif;
-          padding: 20px;
-          box-sizing: border-box;
-        }
-        .content {
-          white-space: pre-wrap;
-          background: #222;
-          border: 1px solid #444;
-          border-radius: 5px;
-          padding: 15px;
-          margin-top: 20px;
-        }
-      `;
-      document.head.appendChild(style);
-
-      // 设置标题
-      const title = document.createElement('title');
-      title.textContent = '明文查看';
-      document.head.appendChild(title);
-
-      // 插入内容
-      const heading = document.createElement('div');
-      heading.innerHTML = '<strong>明文：</strong>';
-      const content = document.createElement('div');
-      content.className = 'content';
-      content.innerHTML = resultText;
-
-      document.body.appendChild(heading);
-      document.body.appendChild(content);
-
-    } catch (e) {
-      document.body.innerHTML = '<div style=\"color:#fff;background:#111;font-family:sans-serif;padding:20px;\">解密失败，密钥错误或数据损坏。</div>';
+      const errorBox = document.createElement('div');
+      errorBox.style.color = '#fff';
+      errorBox.style.background = '#111';
+      errorBox.style.fontFamily = 'sans-serif';
+      errorBox.style.padding = '20px';
+      errorBox.textContent = msg;
+      document.body.appendChild(errorBox);
     }
-  })()">解密</button>
+  </script>
 </body>
 </html>
